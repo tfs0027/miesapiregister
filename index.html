@@ -155,9 +155,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 </div>
 
 <script>
-const SB_URL =  + SB_URL + ;
-const SB_KEY =  + SB_KEY + ;
-const ADMIN_WA =  + ADMIN_WA + ;
+const SB_URL = 'https://lztdvlrunspmcoewfjcg.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6dGR2bHJ1bnNwbWNvZXdmamNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2ODA5MDIsImV4cCI6MjA5MDI1NjkwMn0.fOxpyctLY6k-QjaMIdUdRHJnsGm7FhPozhWTMBSl9-4';
+const ADMIN_WA = '6285155111111';
 const FITUR_LABEL = {kasir:'🛒 Kasir & Order',meja:'🪑 Manajemen Meja',shift:'🔓 Shift Kasir',menu:'🍽️ Menu & Harga',stok:'📦 Stok Bahan',laporan:'📊 Laporan',riwayat:'📋 Riwayat Transaksi',online_order:'🛵 Pesanan Online',member:'👥 Member & Poin',rekrutmen:'📝 Rekrutmen',multi_user:'👤 Multi User'};
 
 var _sb = null, _plans = [], _selPlan = null, _restoId = null;
@@ -170,7 +170,7 @@ async function init() {
   _plans = res.data || [];
   var planList = g('plan-list');
   planList.innerHTML = _plans.map(function(p) {
-    return '<div class="hero-plan" onclick="pilihPlan('' + p.id + '',this)" data-pid="'+p.id+'">' +
+    return '<div class="hero-plan" onclick="pilihPlan(this.dataset.pid,this)" data-pid="'+p.id+'" data-pid="'+p.id+'">' +
       '<div class="hero-plan-nama">'+p.nama+'</div>' +
       '<div class="hero-plan-harga">'+(p.harga===0?'Gratis':'Rp '+p.harga.toLocaleString('id-ID'))+'/'+p.periode+'</div>' +
       (p.badge?'<div class="hero-plan-badge">'+p.badge+'</div>':'') +
