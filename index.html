@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daftar WarungKu POS</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#FFFBF5;--bg2:#fff;--accent:#E8581E;--accent2:#FF7A3D;
+  --green:#00B894;--green-bg:#D1FAE5;--green-dk:#065F46;
+  --red:#EF4444;--red-bg:#FEE2E2;--red-dk:#991B1B;
+  --txt:#1A120A;--txt2:#8B7355;--txt3:#C4A882;
+  --brd:#E8D5BC;--brd2:#D4B896;--radius:12px;
+  --shadow:0 4px 24px rgba(0,0,0,.08);
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh}
+.hero{background:linear-gradient(135deg,#1E1B2E,#2D2B5A);color:#fff;padding:40px 20px;text-align:center}
+.hero-badge{display:inline-block;background:rgba(255,255,255,.15);border-radius:20px;padding:5px 16px;font-size:12px;margin-bottom:16px}
+.hero-title{font-size:28px;font-weight:900;margin-bottom:8px}
+.hero-sub{font-size:14px;opacity:.7;margin-bottom:24px}
+.hero-plans{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.hero-plan{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:12px;padding:12px 20px;min-width:130px;text-align:center;cursor:pointer;transition:all .2s}
+.hero-plan:hover,.hero-plan.sel{background:var(--accent);border-color:var(--accent)}
+.hero-plan-nama{font-size:13px;font-weight:800}
+.hero-plan-harga{font-size:12px;opacity:.8;margin-top:2px}
+.hero-plan-badge{background:var(--accent);border-radius:10px;font-size:9px;padding:1px 7px;margin-top:4px;display:inline-block}
+.container{max-width:600px;margin:0 auto;padding:24px 16px 60px}
+.steps{display:flex;gap:0;margin:24px 0;counter-reset:step}
+.step{flex:1;text-align:center;position:relative;font-size:11px;color:var(--txt3)}
+.step::before{counter-increment:step;content:counter(step);display:flex;align-items:center;justify-content:center;width:28px;height:28px;background:var(--brd);border-radius:50%;font-weight:800;font-size:12px;margin:0 auto 6px;color:var(--txt2)}
+.step.done::before{background:var(--green);color:#fff}
+.step.active::before{background:var(--accent);color:#fff}
+.step::after{content:'';position:absolute;top:14px;left:50%;width:100%;height:2px;background:var(--brd);z-index:-1}
+.step:last-child::after{display:none}
+.card{background:var(--bg2);border-radius:16px;padding:24px;box-shadow:var(--shadow);border:1px solid var(--brd);margin-bottom:16px}
+.card-title{font-size:16px;font-weight:800;margin-bottom:16px}
+.form-group{margin-bottom:14px}
+.form-lbl{display:block;font-size:12px;font-weight:700;color:var(--txt2);margin-bottom:5px}
+.form-lbl.wajib::after{content:" *";color:var(--red)}
+.fi{width:100%;padding:11px 14px;border:1.5px solid var(--brd);border-radius:var(--radius);font-size:14px;font-family:inherit;color:var(--txt);background:var(--bg);outline:none;transition:border-color .2s}
+.fi:focus{border-color:var(--accent)}
+.frow{display:flex;gap:12px}
+.frow .form-group{flex:1}
+.btn{width:100%;padding:14px;border:none;border-radius:var(--radius);font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;margin-top:4px;transition:all .2s}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;box-shadow:0 4px 16px rgba(232,88,30,.3)}
+.btn-wa{background:linear-gradient(135deg,#25D366,#128C7E);color:#fff}
+.btn:disabled{background:#ccc;box-shadow:none;cursor:not-allowed}
+.plan-selected{background:var(--bg2);border:2px solid var(--accent);border-radius:12px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between}
+.plan-name{font-size:15px;font-weight:800}
+.plan-price{font-size:14px;color:var(--accent);font-weight:800}
+.fi-list{list-style:none;margin-top:10px}
+.fi-list li{padding:4px 0;font-size:13px;color:var(--txt2);display:flex;align-items:center;gap:6px}
+.success-view{text-align:center;padding:32px 20px}
+.success-icon{font-size:56px;margin-bottom:12px}
+.success-title{font-size:22px;font-weight:800;color:var(--green-dk);margin-bottom:8px}
+.kode-box{background:var(--bg);border:2px solid var(--brd);border-radius:12px;padding:14px;font-family:monospace;font-size:18px;font-weight:800;letter-spacing:2px;margin:16px 0;color:var(--accent)}
+.note-box{background:var(--green-bg);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--green-dk);margin-bottom:16px;text-align:left;line-height:1.7}
+.err-box{background:var(--red-bg);color:var(--red-dk);border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:12px;display:none}
+@media(max-width:480px){
+  .hero-title{font-size:22px}
+  .frow{flex-direction:column;gap:0}
+  .hero-plans{gap:8px}
+  .hero-plan{min-width:110px;padding:10px 14px}
+}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-badge">⚡ Mulai dalam 5 menit</div>
+  <div class="hero-title">🍜 WarungKu POS</div>
+  <div class="hero-sub">Sistem kasir + pesanan online + rekrutmen untuk UMKM</div>
+  <div class="hero-plans" id="plan-list">
+    <div style="color:rgba(255,255,255,.5);font-size:13px">Memuat paket...</div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- STEP INDICATOR -->
+  <div class="steps" id="steps">
+    <div class="step active" id="step1">Pilih Paket</div>
+    <div class="step" id="step2">Info Toko</div>
+    <div class="step" id="step3">Konfirmasi</div>
+  </div>
+
+  <div id="err-global" class="err-box"></div>
+
+  <!-- STEP 1: Plan sudah dipilih di hero -->
+  <div id="panel-1" style="display:none">
+    <!-- Plan cards are in hero -->
+  </div>
+
+  <!-- STEP 2: Info Toko -->
+  <div id="panel-2" style="display:none">
+    <div class="card">
+      <div class="card-title">🏪 Info Toko & Pemilik</div>
+      <div id="plan-selected-box" class="plan-selected">
+        <div><div class="plan-name" id="sel-plan-name">-</div><div style="font-size:11px;color:var(--txt2)" id="sel-plan-desc">-</div></div>
+        <div class="plan-price" id="sel-plan-price">-</div>
+      </div>
+      <div class="form-group"><label class="form-lbl wajib">Nama Toko / Warung</label><input class="fi" id="r-nama" placeholder="Warung Makan Bu Sari"></div>
+      <div class="frow">
+        <div class="form-group"><label class="form-lbl wajib">Nama Pemilik</label><input class="fi" id="r-owner" placeholder="Sari Dewi"></div>
+        <div class="form-group"><label class="form-lbl">Logo Emoji</label><input class="fi" id="r-logo" placeholder="🍜" style="font-size:20px;text-align:center" maxlength="4"></div>
+      </div>
+      <div class="frow">
+        <div class="form-group"><label class="form-lbl wajib">No. HP / WhatsApp</label><input class="fi" id="r-hp" type="tel" placeholder="08xxxxxxxxxx"></div>
+        <div class="form-group"><label class="form-lbl">Email</label><input class="fi" id="r-email" type="email" placeholder="sari@email.com"></div>
+      </div>
+      <div class="form-group"><label class="form-lbl">Alamat Toko</label><input class="fi" id="r-alamat" placeholder="Jl. Merdeka No. 1, Kota..."></div>
+      <button class="btn btn-primary" onclick="goStep3()">Lanjut →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: Konfirmasi + Pembayaran -->
+  <div id="panel-3" style="display:none">
+    <div class="card">
+      <div class="card-title">📋 Ringkasan Pendaftaran</div>
+      <div id="ringkasan-box" style="font-size:13px;line-height:2"></div>
+      <div style="margin-top:16px;padding:14px;background:var(--bg);border-radius:10px;border:1.5px solid var(--brd)">
+        <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--txt2)">📦 FITUR YANG DIDAPAT:</div>
+        <div id="fitur-box"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">💳 Cara Pembayaran</div>
+      <div style="font-size:13px;color:var(--txt2);line-height:1.8;margin-bottom:14px">
+        Transfer ke rekening berikut, lalu kirim bukti ke WhatsApp admin:
+        <div style="margin-top:10px;background:var(--bg);border-radius:10px;padding:12px 14px;font-weight:700;font-size:14px">
+          🏦 BCA 1234567890<br>
+          a.n. WarungKu Indonesia
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="daftar()" id="btn-daftar">✅ Kirim Pendaftaran</button>
+    </div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="panel-success" style="display:none">
+    <div class="card success-view">
+      <div class="success-icon">🎉</div>
+      <div class="success-title">Pendaftaran Berhasil!</div>
+      <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">ID Toko kamu (simpan ini):</div>
+      <div class="kode-box" id="resto-id-box">-</div>
+      <div class="note-box">
+        ✅ Pendaftaran sudah kami terima.<br>
+        📱 Silakan hubungi admin via WhatsApp di bawah untuk konfirmasi pembayaran dan aktivasi akun.<br>
+        ⏱️ Akun akan aktif dalam 1×24 jam setelah pembayaran dikonfirmasi.
+      </div>
+      <button class="btn btn-wa" onclick="hubungiAdmin()">💬 Hubungi Admin via WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SB_URL =  + SB_URL + ;
+const SB_KEY =  + SB_KEY + ;
+const ADMIN_WA =  + ADMIN_WA + ;
+const FITUR_LABEL = {kasir:'🛒 Kasir & Order',meja:'🪑 Manajemen Meja',shift:'🔓 Shift Kasir',menu:'🍽️ Menu & Harga',stok:'📦 Stok Bahan',laporan:'📊 Laporan',riwayat:'📋 Riwayat Transaksi',online_order:'🛵 Pesanan Online',member:'👥 Member & Poin',rekrutmen:'📝 Rekrutmen',multi_user:'👤 Multi User'};
+
+var _sb = null, _plans = [], _selPlan = null, _restoId = null;
+
+function g(id){ return document.getElementById(id); }
+
+async function init() {
+  _sb = window.supabase.createClient(SB_URL, SB_KEY);
+  var res = await _sb.from('plans').select('*').eq('aktif', true).order('urutan');
+  _plans = res.data || [];
+  var planList = g('plan-list');
+  planList.innerHTML = _plans.map(function(p) {
+    return '<div class="hero-plan" onclick="pilihPlan('' + p.id + '',this)" data-pid="'+p.id+'">' +
+      '<div class="hero-plan-nama">'+p.nama+'</div>' +
+      '<div class="hero-plan-harga">'+(p.harga===0?'Gratis':'Rp '+p.harga.toLocaleString('id-ID'))+'/'+p.periode+'</div>' +
+      (p.badge?'<div class="hero-plan-badge">'+p.badge+'</div>':'') +
+    '</div>';
+  }).join('');
+}
+
+function pilihPlan(planId, el) {
+  document.querySelectorAll('.hero-plan').forEach(function(e){ e.classList.remove('sel'); });
+  el.classList.add('sel');
+  _selPlan = _plans.find(function(p){ return p.id===planId; });
+  // Mark step 1 done, go to step 2
+  g('step1').classList.remove('active'); g('step1').classList.add('done');
+  g('step2').classList.add('active');
+  g('panel-2').style.display = 'block';
+  g('panel-2').scrollIntoView({behavior:'smooth', block:'start'});
+  // Fill plan info
+  g('sel-plan-name').textContent = _selPlan.nama;
+  g('sel-plan-desc').textContent = _selPlan.deskripsi||'';
+  g('sel-plan-price').textContent = _selPlan.harga===0?'Gratis':'Rp '+_selPlan.harga.toLocaleString('id-ID')+'/'+_selPlan.periode;
+}
+
+function showErr(msg){ var e=g('err-global'); e.textContent=msg; e.style.display='block'; setTimeout(function(){e.style.display='none';},4000); }
+
+function goStep3() {
+  var nama=g('r-nama').value.trim(), owner=g('r-owner').value.trim(), hp=g('r-hp').value.trim();
+  if (!_selPlan){ showErr('Pilih paket terlebih dahulu'); return; }
+  if (!nama){ showErr('Nama toko wajib diisi'); return; }
+  if (!owner){ showErr('Nama pemilik wajib diisi'); return; }
+  if (!hp){ showErr('No. HP wajib diisi'); return; }
+  g('step2').classList.remove('active'); g('step2').classList.add('done');
+  g('step3').classList.add('active');
+  // Build ringkasan
+  g('ringkasan-box').innerHTML =
+    '<b>Nama Toko:</b> '+nama+'<br>' +
+    '<b>Pemilik:</b> '+owner+'<br>' +
+    '<b>No. HP:</b> '+hp+'<br>' +
+    '<b>Paket:</b> '+_selPlan.nama+'<br>' +
+    '<b>Harga:</b> '+(_selPlan.harga===0?'Gratis':'Rp '+_selPlan.harga.toLocaleString('id-ID')+'/'+_selPlan.periode);
+  // Fitur
+  var fitur = _selPlan.fitur || {};
+  g('fitur-box').innerHTML = Object.keys(FITUR_LABEL).map(function(k){
+    var on = fitur[k];
+    return '<div style="font-size:12px;padding:2px 0;color:'+(on?'var(--green-dk)':'var(--txt3)') +'">'+
+      (on?'✅':'❌')+' '+FITUR_LABEL[k]+'</div>';
+  }).join('');
+  g('panel-3').style.display = 'block';
+  g('panel-3').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+async function daftar() {
+  var btn = g('btn-daftar');
+  btn.disabled=true; btn.textContent='⏳ Memproses...';
+  try {
+    var tokoData = {
+      nama: g('r-nama').value.trim(),
+      logo: g('r-logo').value.trim()||'🍜',
+      owner_nama: g('r-owner').value.trim(),
+      owner_hp: g('r-hp').value.trim(),
+      owner_email: g('r-email').value.trim()||null,
+      alamat: g('r-alamat').value.trim()||null,
+      status: 'pending',
+    };
+    var rr = await _sb.from('restaurants').insert(tokoData).select('id').single();
+    if (rr.error) throw rr.error;
+    _restoId = rr.data.id;
+    // Create trial subscription
+    var today = new Date().toISOString().substring(0,10);
+    var in14 = new Date(); in14.setDate(in14.getDate()+14);
+    await _sb.from('subscriptions').insert({
+      restaurant_id: _restoId,
+      plan_id: _selPlan.id,
+      status: 'pending',
+      mulai: today,
+      selesai: in14.toISOString().substring(0,10),
+      fitur_override: _selPlan.fitur || {},
+      catatan: 'Menunggu konfirmasi pembayaran'
+    });
+    // Show success
+    g('panel-2').style.display='none';
+    g('panel-3').style.display='none';
+    g('panel-success').style.display='block';
+    g('resto-id-box').textContent = _restoId;
+    g('panel-success').scrollIntoView({behavior:'smooth'});
+  } catch(e) {
+    btn.disabled=false; btn.textContent='✅ Kirim Pendaftaran';
+    showErr('Gagal: '+e.message);
+  }
+}
+
+function hubungiAdmin() {
+  var nama = g('r-nama') ? g('r-nama').value : '-';
+  var paket = _selPlan ? _selPlan.nama : '-';
+  var harga = _selPlan ? (_selPlan.harga===0?'Gratis':'Rp '+_selPlan.harga.toLocaleString('id-ID')+'/'+_selPlan.periode) : '-';
+  var nl = String.fromCharCode(10);
+  var msg = '🍜 Halo Admin WarungKu!' + nl +
+    'Saya ingin mendaftarkan toko:' + nl +
+    '*Nama Toko:* '+nama+nl+
+    '*Paket:* '+paket+nl+
+    '*Harga:* '+harga+nl+
+    '*ID Toko:* '+(_restoId||'-')+nl+nl+
+    'Mohon dikonfirmasi pendaftaran dan info pembayarannya. Terima kasih!';
+  window.open('https://wa.me/'+ADMIN_WA+'?text='+encodeURIComponent(msg),'_blank');
+}
+
+init();
+</script>
+</body>
+</html>
