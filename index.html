@@ -110,6 +110,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
         <div class="form-group"><label class="form-lbl">Email</label><input class="fi" id="r-email" type="email" placeholder="sari@email.com"></div>
       </div>
       <div class="form-group"><label class="form-lbl">Alamat Toko</label><input class="fi" id="r-alamat" placeholder="Jl. Merdeka No. 1, Kota..."></div>
+      <div class="form-group" style="margin-top:12px;background:var(--accent-bg,#FFF3EE);border-radius:10px;padding:12px;border:1px solid var(--accent2,#FDCB6E)">
+        <label class="form-lbl" style="color:var(--accent,#E17055)">🔐 PIN Admin (4 digit angka)</label>
+        <input class="fi" id="r-pin" type="password" maxlength="4" pattern="[0-9]{4}" placeholder="Contoh: 1234" inputmode="numeric"
+          style="letter-spacing:8px;font-size:18px;font-weight:700;text-align:center">
+        <div style="font-size:11px;color:var(--txt3);margin-top:4px">PIN ini akan digunakan untuk login ke aplikasi kasir</div>
+      </div>
       <button class="btn btn-primary" onclick="goStep3()">Lanjut →</button>
     </div>
   </div>
@@ -144,6 +150,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
       <div class="success-title">Pendaftaran Berhasil!</div>
       <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">ID Toko kamu (simpan ini):</div>
       <div class="kode-box" id="resto-id-box">-</div>
+      <div style="font-size:13px;color:var(--txt2);margin:10px 0 4px">PIN Admin kamu:</div>
+      <div class="kode-box" id="pin-info-box" style="letter-spacing:8px">****</div>
+      <div style="font-size:11px;color:var(--txt3);margin-bottom:12px">Simpan PIN ini — digunakan untuk login ke kasir</div>
       <div class="note-box">
         ✅ Pendaftaran sudah kami terima.<br>
         📱 Silakan hubungi admin via WhatsApp di bawah untuk konfirmasi pembayaran dan aktivasi akun.<br>
@@ -207,6 +216,8 @@ function goStep3() {
   if (!nama){ showErr('Nama toko wajib diisi'); return; }
   if (!owner){ showErr('Nama pemilik wajib diisi'); return; }
   if (!hp){ showErr('No. HP wajib diisi'); return; }
+  var pin = (g('r-pin')||{value:''}).value.trim();
+  if (!pin || !/^[0-9]{4}$/.test(pin)){ showErr('PIN admin 4 digit angka wajib diisi'); return; }
   g('step2').classList.remove('active'); g('step2').classList.add('done');
   g('step3').classList.add('active');
   // Build ringkasan
@@ -255,11 +266,31 @@ async function daftar() {
       fitur_override: _selPlan.fitur || {},
       catatan: 'Menunggu konfirmasi pembayaran'
     });
+    // Buat user admin pertama di tabel users
+    var pinVal = (g('r-pin')||{value:'0000'}).value.trim() || '0000';
+    var pinHash = pinVal;
+    try {
+      var enc = new TextEncoder().encode(pinVal);
+      var buf = await crypto.subtle.digest('SHA-256', enc);
+      pinHash = Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+    } catch(hashErr) { console.warn('Hash PIN gagal:', hashErr.message); }
+    await _sb.from('users').insert({
+      restaurant_id: _restoId,
+      nama: g('r-owner').value.trim() || 'Admin',
+      role: 'admin',
+      pin_hash: pinHash,
+      perms: {order:1,meja:1,shift:1,menu:1,stok:1,laporan:1,riwayat:1,
+               'online-order':1,rekrutmen:1,users:1,settings:1,diskon:1,void_trx:1,edit_harga:1}
+    });
+
     // Show success
     g('panel-2').style.display='none';
     g('panel-3').style.display='none';
     g('panel-success').style.display='block';
     g('resto-id-box').textContent = _restoId;
+    // Tampilkan PIN di success screen
+    var pinBox = g('pin-info-box');
+    if (pinBox) pinBox.textContent = (g('r-pin')||{value:'****'}).value || '****';
     g('panel-success').scrollIntoView({behavior:'smooth'});
   } catch(e) {
     btn.disabled=false; btn.textContent='✅ Kirim Pendaftaran';
