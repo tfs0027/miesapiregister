@@ -134,11 +134,10 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
     <div class="card">
       <div class="card-title">💳 Cara Pembayaran</div>
       <div style="font-size:13px;color:var(--txt2);line-height:1.8;margin-bottom:14px">
-        Transfer ke rekening berikut, lalu kirim bukti ke WhatsApp admin:
-        <div style="margin-top:10px;background:var(--bg);border-radius:10px;padding:12px 14px;font-weight:700;font-size:14px">
-          🏦 BCA 1234567890<br>
-          a.n. WarungKu Indonesia
-        </div>
+        Transfer ke rekening berikut atau scan QRIS, lalu kirim bukti ke WhatsApp admin:
+      </div>
+      <div id="payment-info-box">
+        <div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">⏳ Memuat info pembayaran...</div>
       </div>
       <button class="btn btn-primary" onclick="daftar()" id="btn-daftar">✅ Kirim Pendaftaran</button>
     </div>
@@ -237,6 +236,65 @@ function goStep3() {
   }).join('');
   g('panel-3').style.display = 'block';
   g('panel-3').scrollIntoView({behavior:'smooth',block:'start'});
+  // Load info pembayaran dari Supabase
+  loadPaymentInfo();
+}
+
+
+// Load info pembayaran dari Supabase system_config (diset oleh admin)
+async function loadPaymentInfo() {
+  var box = g('payment-info-box'); if (!box) return;
+  try {
+    var res = await _sb.from('system_config')
+      .select('key,value')
+      .in('key', ['payment_banks','payment_qris_img','payment_qris_nama']);
+    var banks = [], qrisImg = null, qrisNama = '';
+    if (!res.error && res.data) {
+      res.data.forEach(function(r) {
+        if (r.key === 'payment_banks') {
+          try { banks = JSON.parse(r.value) || []; } catch(e){}
+        }
+        if (r.key === 'payment_qris_img') qrisImg = r.value;
+        if (r.key === 'payment_qris_nama') qrisNama = r.value;
+      });
+    }
+    var html = '';
+
+    // Bank transfers
+    banks.filter(function(b){ return b.nama || b.norek; }).forEach(function(b) {
+      html += '<div style="background:var(--bg);border:1.5px solid var(--brd);border-radius:10px;padding:12px 14px;margin-bottom:10px">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--txt2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">🏦 Transfer Bank</div>' +
+        '<div style="font-size:16px;font-weight:800">' + (b.nama||'Bank') + ' · ' + (b.norek||'-') + '</div>' +
+        '<div style="font-size:12px;color:var(--txt2);margin-top:2px">a.n. ' + (b.an||'-') + '</div>' +
+        '<button data-norek="' + (b.norek||'').replace(/"/g,'') + '" onclick="var n=this.dataset.norek;if(navigator.clipboard){navigator.clipboard.writeText(n).then(function(){showToast(\'✅ Disalin: \'+n)});}else{showToast(n);}" ' +
+          'style="margin-top:6px;font-size:11px;padding:4px 10px;border:1px solid var(--brd);border-radius:6px;background:var(--bg2);cursor:pointer">📋 Salin No. Rekening</button>' +
+      '</div>';
+    });
+
+    // QRIS
+    if (qrisImg) {
+      html += '<div style="background:var(--bg);border:1.5px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;text-align:center">' +
+        '<div style="font-size:11px;font-weight:700;color:var(--txt2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">📲 Scan QRIS</div>' +
+        (qrisNama ? '<div style="font-size:13px;font-weight:700;margin-bottom:8px">' + qrisNama + '</div>' : '') +
+        '<img src="' + qrisImg + '" style="max-width:200px;border-radius:8px;border:1px solid var(--brd)">' +
+      '</div>';
+    }
+
+    if (!html) {
+      html = '<div style="font-size:12px;color:var(--txt3);padding:12px;text-align:center">Info pembayaran belum diatur admin.<br>Silakan hubungi admin via WhatsApp.</div>';
+    }
+    box.innerHTML = html;
+  } catch(e) {
+    box.innerHTML = '<div style="font-size:12px;color:var(--txt3);padding:12px;text-align:center">Gagal memuat info pembayaran.<br>Silakan hubungi admin via WhatsApp.</div>';
+  }
+}
+
+function showToast(msg) {
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;z-index:9999;opacity:1;transition:opacity .4s';
+  document.body.appendChild(t);
+  setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ t.remove(); }, 400); }, 2500);
 }
 
 async function daftar() {
