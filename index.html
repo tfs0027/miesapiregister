@@ -139,7 +139,24 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
       <div id="payment-info-box">
         <div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">⏳ Memuat info pembayaran...</div>
       </div>
-      <button class="btn btn-primary" onclick="daftar()" id="btn-daftar">✅ Kirim Pendaftaran</button>
+      <!-- Upload bukti pembayaran -->
+      <div style="margin-top:16px;padding:14px;background:var(--accent-bg,#FFF3EE);border-radius:12px;border:2px dashed var(--accent,#E17055)">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--accent,#E17055)">📸 Upload Bukti Pembayaran <span style="color:var(--red)">*</span></div>
+        <div style="font-size:11px;color:var(--txt2);margin-bottom:10px">
+          Foto/screenshot bukti transfer atau QRIS. Pendaftaran tidak bisa dikirim tanpa bukti pembayaran.
+        </div>
+        <input type="file" id="bukti-file" accept="image/*" style="display:none" onchange="previewBukti(this)">
+        <label for="bukti-file" id="bukti-label" style="display:block;padding:14px;text-align:center;border:1.5px dashed var(--brd);border-radius:10px;cursor:pointer;background:var(--bg2);font-size:12px;color:var(--txt2)">
+          📁 Klik untuk pilih foto bukti bayar
+        </label>
+        <div id="bukti-preview-wrap" style="margin-top:10px;display:none">
+          <img id="bukti-preview-img" style="max-width:100%;max-height:220px;border-radius:10px;border:1px solid var(--brd);display:block;margin:0 auto">
+          <button onclick="hapusBukti()" style="display:block;margin:8px auto 0;font-size:11px;padding:4px 12px;background:var(--red-bg);color:var(--red-dk);border:1px solid var(--red);border-radius:6px;cursor:pointer">🗑️ Ganti Foto</button>
+        </div>
+        <div id="bukti-err" style="display:none;color:var(--red-dk);font-size:11px;margin-top:6px;font-weight:600">⚠️ Wajib upload bukti pembayaran</div>
+      </div>
+
+      <button class="btn btn-primary" onclick="daftar()" id="btn-daftar" style="margin-top:14px">✅ Kirim Pendaftaran</button>
     </div>
   </div>
 
@@ -169,7 +186,7 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 var ADMIN_WA = ''; // akan diambil dari Supabase
 const FITUR_LABEL = {kasir:'🛒 Kasir & Order',meja:'🪑 Manajemen Meja',shift:'🔓 Shift Kasir',menu:'🍽️ Menu & Harga',stok:'📦 Stok Bahan',laporan:'📊 Laporan',riwayat:'📋 Riwayat Transaksi',online_order:'🛵 Pesanan Online',member:'👥 Member & Poin',rekrutmen:'📝 Rekrutmen',multi_user:'👤 Multi User'};
 
-var _sb = null, _plans = [], _selPlan = null, _restoId = null;
+var _sb = null, _plans = [], _selPlan = null, _restoId = null, BUKTI_BASE64 = null;
 
 function g(id){ return document.getElementById(id); }
 
@@ -297,7 +314,49 @@ function showToast(msg) {
   setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ t.remove(); }, 400); }, 2500);
 }
 
+function previewBukti(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  // Validasi ukuran file (max 3MB)
+  if (file.size > 3 * 1024 * 1024) {
+    var errEl = g('bukti-err');
+    if (errEl) { errEl.textContent = '⚠️ Ukuran file terlalu besar (maks 3MB)'; errEl.style.display = 'block'; }
+    input.value = '';
+    return;
+  }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    BUKTI_BASE64 = e.target.result;
+    var wrap = g('bukti-preview-wrap');
+    var img = g('bukti-preview-img');
+    var lbl = g('bukti-label');
+    var err = g('bukti-err');
+    if (img) img.src = BUKTI_BASE64;
+    if (wrap) wrap.style.display = 'block';
+    if (lbl) lbl.style.display = 'none';
+    if (err) err.style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+function hapusBukti() {
+  BUKTI_BASE64 = null;
+  var fi = g('bukti-file'); if (fi) fi.value = '';
+  var wrap = g('bukti-preview-wrap'); if (wrap) wrap.style.display = 'none';
+  var lbl = g('bukti-label'); if (lbl) lbl.style.display = 'block';
+}
+
 async function daftar() {
+  // Validasi bukti pembayaran wajib
+  if (!BUKTI_BASE64) {
+    var errEl = g('bukti-err');
+    if (errEl) { errEl.textContent = '⚠️ Wajib upload bukti pembayaran sebelum mengirim'; errEl.style.display = 'block'; }
+    var lbl = g('bukti-label');
+    if (lbl) { lbl.style.borderColor = 'var(--red-dk)'; lbl.style.background = 'var(--red-bg)'; }
+    var wrap = g('bukti-preview-wrap') || lbl;
+    if (wrap) wrap.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
   var btn = g('btn-daftar');
   btn.disabled=true; btn.textContent='⏳ Memproses...';
   try {
@@ -309,6 +368,7 @@ async function daftar() {
       owner_email: g('r-email').value.trim()||null,
       alamat: g('r-alamat').value.trim()||null,
       status: 'pending',
+      bukti_bayar: BUKTI_BASE64||null,  // simpan bukti pembayaran
     };
     var rr = await _sb.from('restaurants').insert(tokoData).select('id').single();
     if (rr.error) throw rr.error;
