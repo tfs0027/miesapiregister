@@ -148,8 +148,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
       <div id="payment-info-box" style="margin-bottom:14px">
         <div style="text-align:center;padding:16px;color:var(--txt3);font-size:12px">⏳ Memuat info pembayaran...</div>
       </div>
-      <!-- Upload bukti pembayaran -->
-      <div style="margin-top:16px;padding:14px;background:var(--accent-bg,#FFF3EE);border-radius:12px;border:2px dashed var(--accent,#E17055)">
+      <!-- Upload bukti pembayaran — hanya tampil jika paket berbayar -->
+      <div id="bukti-section" style="margin-top:16px;padding:14px;background:var(--accent-bg,#FFF3EE);border-radius:12px;border:2px dashed var(--accent,#E17055)">
         <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--accent,#E17055)">📸 Upload Bukti Pembayaran <span style="color:var(--red)">*</span></div>
         <div style="font-size:11px;color:var(--txt2);margin-bottom:10px">
           Foto/screenshot bukti transfer atau QRIS. Pendaftaran tidak bisa dikirim tanpa bukti pembayaran.
@@ -311,17 +311,21 @@ function showErr(msg){ var e=g('err-global'); e.textContent=msg; e.style.display
 function goStep3() {
   var nama=g('r-nama').value.trim(), owner=g('r-owner').value.trim(), hp=g('r-hp').value.trim();
   if (!_selPlan){ showErr('Pilih paket terlebih dahulu'); return; }
+  var pin3 = g('r-pin') ? g('r-pin').value.trim() : '';
   if (!nama){ showErr('Nama toko wajib diisi'); return; }
   if (!owner){ showErr('Nama pemilik wajib diisi'); return; }
   if (!hp){ showErr('No. HP wajib diisi'); return; }
+  if (!pin3 || pin3.length !== 4 || !/^\d{4}$/.test(pin3)){ showErr('PIN Admin harus 4 digit angka'); return; }
   g('step2').classList.remove('active'); g('step2').classList.add('done');
   g('step3').classList.add('active');
   // Build ringkasan
+  // Escape untuk tampilan
+  function esc(s){return s?String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;'):'';} 
   g('ringkasan-box').innerHTML =
-    '<b>Nama Toko:</b> '+nama+'<br>' +
-    '<b>Pemilik:</b> '+owner+'<br>' +
-    '<b>No. HP:</b> '+hp+'<br>' +
-    '<b>Paket:</b> '+_selPlan.nama+'<br>' +
+    '<b>Nama Toko:</b> '+esc(nama)+'<br>' +
+    '<b>Pemilik:</b> '+esc(owner)+'<br>' +
+    '<b>No. HP:</b> '+esc(hp)+'<br>' +
+    '<b>Paket:</b> '+esc(_selPlan.nama)+'<br>' +
     '<b>Harga:</b> '+(_selPlan.harga===0?'Gratis':'Rp '+_selPlan.harga.toLocaleString('id-ID')+'/'+_selPlan.periode);
   // Fitur
   var fitur = _selPlan.fitur || {};
@@ -330,6 +334,11 @@ function goStep3() {
     return '<div style="font-size:12px;padding:2px 0;color:'+(on?'var(--green-dk)':'var(--txt3)') +'">'+
       (on?'✅':'❌')+' '+FITUR_LABEL[k]+'</div>';
   }).join('');
+  // Sembunyikan/tampilkan upload bukti sesuai paket
+  var buktiSec = g('bukti-section');
+  if (buktiSec) {
+    buktiSec.style.display = _selPlan.harga > 0 ? 'block' : 'none';
+  }
   g('panel-3').style.display = 'block';
   g('panel-3').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -352,21 +361,41 @@ async function daftar() {
     return;
   }
   try {
+    // Hash PIN dengan SHA-256 sebelum simpan
+    var enc = new TextEncoder().encode(pin);
+    var buf = await crypto.subtle.digest('SHA-256', enc);
+    var pinHash = Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
+
     var tokoData = {
       nama: g('r-nama').value.trim(),
       logo: g('r-logo').value.trim()||'🍜',
-      owner_nama: g('r-owner').value.trim(),
-      owner_hp: g('r-hp').value.trim(),
+      nama_pemilik: g('r-owner').value.trim(),
+      hp: g('r-hp').value.trim(),
       owner_email: g('r-email').value.trim()||null,
       alamat: g('r-alamat').value.trim()||null,
       status: 'pending',
       bukti_bayar: _buktiBayarBase64 || null,
-      pin: pin,
     };
     var rr = await _sb.from('restaurants').insert(tokoData).select('id').single();
     if (rr.error) throw rr.error;
     _restoId = rr.data.id;
-    // Create trial subscription
+
+    // Buat user Admin untuk toko ini
+    var ur = await _sb.from('users').insert({
+      restaurant_id: _restoId,
+      name: g('r-owner').value.trim() || 'Admin',
+      role: 'admin',
+      pin: pin,
+      pin_hash: pinHash,
+      perms: {kasir:1,meja:1,shift:1,menu:1,stok:1,laporan:1,riwayat:1,users:1,settings:1,diskon:1,void_trx:1,edit_harga:1,'online-order':1,rekrutmen:1,settings_online:1,settings_rekrutmen:1}
+    });
+    if (ur.error) {
+      // Rollback: hapus restaurant jika user gagal dibuat
+      await _sb.from('restaurants').delete().eq('id', _restoId);
+      throw ur.error;
+    }
+
+    // Buat subscription
     var today = new Date().toISOString().substring(0,10);
     var in14 = new Date(); in14.setDate(in14.getDate()+14);
     await _sb.from('subscriptions').insert({
@@ -378,10 +407,10 @@ async function daftar() {
       fitur_override: _selPlan.fitur || {},
       catatan: 'Menunggu konfirmasi pembayaran'
     });
-    // Show success
-    g('panel-2').style.display='none';
-    g('panel-3').style.display='none';
-    g('panel-success').style.display='block';
+
+    // Tampilkan halaman sukses
+    ['panel-1','panel-2','panel-3'].forEach(function(id){ var el=g(id); if(el) el.style.display='none'; });
+    g('panel-success').style.display = 'block';
     g('resto-id-box').textContent = _restoId;
     g('pin-info-box').textContent = pin;
     g('panel-success').scrollIntoView({behavior:'smooth'});
