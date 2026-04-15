@@ -119,6 +119,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
         <div class="form-group"><label class="form-lbl">Email</label><input class="fi" id="r-email" type="email" placeholder="sari@email.com"></div>
       </div>
       <div class="form-group"><label class="form-lbl">Alamat Toko</label><input class="fi" id="r-alamat" placeholder="Jl. Merdeka No. 1, Kota..."></div>
+      <div class="form-group" style="margin-top:12px;background:var(--accent-bg,#FFF3EE);border-radius:10px;padding:12px;border:1px solid var(--accent2,#FDCB6E)">
+        <label class="form-lbl" style="color:var(--accent,#E17055)">🔑 PIN Admin (4 digit angka)</label>
+        <input class="fi" id="r-pin" type="password" maxlength="4" pattern="[0-9]{4}" placeholder="••••" inputmode="numeric"
+          style="letter-spacing:12px;font-size:22px;font-weight:800;text-align:center;width:120px"
+          oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+        <div style="font-size:11px;color:var(--txt3);margin-top:4px">PIN ini digunakan untuk login ke aplikasi kasir. Simpan baik-baik!</div>
+      </div>
       <button class="btn btn-primary" onclick="goStep3()">Lanjut →</button>
     </div>
   </div>
@@ -304,13 +311,6 @@ function showErr(msg){ var e=g('err-global'); e.textContent=msg; e.style.display
 function goStep3() {
   var nama=g('r-nama').value.trim(), owner=g('r-owner').value.trim(), hp=g('r-hp').value.trim();
   if (!_selPlan){ showErr('Pilih paket terlebih dahulu'); return; }
-  // Validasi bukti bayar — wajib jika paket berbayar
-  if (_selPlan && _selPlan.harga > 0 && !_buktiBayarBase64) {
-    var errEl = g('bukti-err');
-    if (errEl) { errEl.style.display = 'block'; errEl.scrollIntoView({behavior:'smooth',block:'center'}); }
-    showErr('Upload bukti pembayaran terlebih dahulu');
-    return;
-  }
   if (!nama){ showErr('Nama toko wajib diisi'); return; }
   if (!owner){ showErr('Nama pemilik wajib diisi'); return; }
   if (!hp){ showErr('No. HP wajib diisi'); return; }
@@ -337,6 +337,20 @@ function goStep3() {
 async function daftar() {
   var btn = g('btn-daftar');
   btn.disabled=true; btn.textContent='⏳ Memproses...';
+  // Validasi PIN admin
+  var pin = g('r-pin') ? g('r-pin').value.trim() : '';
+  if (!pin || pin.length !== 4) {
+    btn.disabled=false; btn.textContent='✅ Kirim Pendaftaran';
+    showErr('PIN Admin 4 digit wajib diisi'); return;
+  }
+  // Validasi bukti bayar jika paket berbayar
+  if (_selPlan && _selPlan.harga > 0 && !_buktiBayarBase64) {
+    btn.disabled=false; btn.textContent='✅ Kirim Pendaftaran';
+    var errEl = g('bukti-err');
+    if (errEl) { errEl.style.display='block'; errEl.scrollIntoView({behavior:'smooth',block:'center'}); }
+    showErr('Upload bukti pembayaran terlebih dahulu');
+    return;
+  }
   try {
     var tokoData = {
       nama: g('r-nama').value.trim(),
@@ -347,6 +361,7 @@ async function daftar() {
       alamat: g('r-alamat').value.trim()||null,
       status: 'pending',
       bukti_bayar: _buktiBayarBase64 || null,
+      pin: pin,
     };
     var rr = await _sb.from('restaurants').insert(tokoData).select('id').single();
     if (rr.error) throw rr.error;
@@ -368,6 +383,7 @@ async function daftar() {
     g('panel-3').style.display='none';
     g('panel-success').style.display='block';
     g('resto-id-box').textContent = _restoId;
+    g('pin-info-box').textContent = pin;
     g('panel-success').scrollIntoView({behavior:'smooth'});
   } catch(e) {
     btn.disabled=false; btn.textContent='✅ Kirim Pendaftaran';
