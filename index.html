@@ -2,6 +2,15 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="SAMEORIGIN">
+<meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+<script>
+// Redirect HTTP → HTTPS di production
+if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+  location.replace('https:' + location.href.substring(5));
+}
+</script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Daftar WarungKu POS</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -110,13 +119,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
         <div class="form-group"><label class="form-lbl">Email</label><input class="fi" id="r-email" type="email" placeholder="sari@email.com"></div>
       </div>
       <div class="form-group"><label class="form-lbl">Alamat Toko</label><input class="fi" id="r-alamat" placeholder="Jl. Merdeka No. 1, Kota..."></div>
-      <div class="form-group" style="margin-top:12px;background:var(--accent-bg,#FFF3EE);border-radius:10px;padding:12px;border:1px solid var(--accent2,#FDCB6E)">
-        <label class="form-lbl" style="color:var(--accent,#E17055)">🔐 PIN Admin (4 digit angka)</label>
-        <input class="fi" id="r-pin" type="text" maxlength="4" pattern="[0-9]{4}" placeholder="1234" inputmode="numeric"
-          style="letter-spacing:12px;font-size:22px;font-weight:800;text-align:center;width:120px"
-          oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-        <div style="font-size:11px;color:var(--txt3);margin-top:4px">PIN ini akan digunakan untuk login ke aplikasi kasir</div>
-      </div>
       <button class="btn btn-primary" onclick="goStep3()">Lanjut →</button>
     </div>
   </div>
@@ -134,29 +136,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
     <div class="card">
       <div class="card-title">💳 Cara Pembayaran</div>
       <div style="font-size:13px;color:var(--txt2);line-height:1.8;margin-bottom:14px">
-        Transfer ke rekening berikut atau scan QRIS, lalu kirim bukti ke WhatsApp admin:
-      </div>
-      <div id="payment-info-box">
-        <div style="text-align:center;padding:20px;color:var(--txt3);font-size:12px">⏳ Memuat info pembayaran...</div>
-      </div>
-      <!-- Upload bukti pembayaran -->
-      <div style="margin-top:16px;padding:14px;background:var(--accent-bg,#FFF3EE);border-radius:12px;border:2px dashed var(--accent,#E17055)">
-        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--accent,#E17055)">📸 Upload Bukti Pembayaran <span style="color:var(--red)">*</span></div>
-        <div style="font-size:11px;color:var(--txt2);margin-bottom:10px">
-          Foto/screenshot bukti transfer atau QRIS. Pendaftaran tidak bisa dikirim tanpa bukti pembayaran.
+        Transfer ke rekening berikut, lalu kirim bukti ke WhatsApp admin:
+        <div style="margin-top:10px;background:var(--bg);border-radius:10px;padding:12px 14px;font-weight:700;font-size:14px">
+          🏦 BCA 1234567890<br>
+          a.n. WarungKu Indonesia
         </div>
-        <input type="file" id="bukti-file" accept="image/*" style="display:none" onchange="previewBukti(this)">
-        <label for="bukti-file" id="bukti-label" style="display:block;padding:14px;text-align:center;border:1.5px dashed var(--brd);border-radius:10px;cursor:pointer;background:var(--bg2);font-size:12px;color:var(--txt2)">
-          📁 Klik untuk pilih foto bukti bayar
-        </label>
-        <div id="bukti-preview-wrap" style="margin-top:10px;display:none">
-          <img id="bukti-preview-img" style="max-width:100%;max-height:220px;border-radius:10px;border:1px solid var(--brd);display:block;margin:0 auto">
-          <button onclick="hapusBukti()" style="display:block;margin:8px auto 0;font-size:11px;padding:4px 12px;background:var(--red-bg);color:var(--red-dk);border:1px solid var(--red);border-radius:6px;cursor:pointer">🗑️ Ganti Foto</button>
-        </div>
-        <div id="bukti-err" style="display:none;color:var(--red-dk);font-size:11px;margin-top:6px;font-weight:600">⚠️ Wajib upload bukti pembayaran</div>
       </div>
-
-      <button class="btn btn-primary" onclick="daftar()" id="btn-daftar" style="margin-top:14px">✅ Kirim Pendaftaran</button>
+      <button class="btn btn-primary" onclick="daftar()" id="btn-daftar">✅ Kirim Pendaftaran</button>
     </div>
   </div>
 
@@ -167,9 +153,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
       <div class="success-title">Pendaftaran Berhasil!</div>
       <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">ID Toko kamu (simpan ini):</div>
       <div class="kode-box" id="resto-id-box">-</div>
-      <div style="font-size:13px;color:var(--txt2);margin:10px 0 4px">PIN Admin kamu:</div>
-      <div class="kode-box" id="pin-info-box" style="letter-spacing:8px">****</div>
-      <div style="font-size:11px;color:var(--txt3);margin-bottom:12px">Simpan PIN ini — digunakan untuk login ke kasir</div>
       <div class="note-box">
         ✅ Pendaftaran sudah kami terima.<br>
         📱 Silakan hubungi admin via WhatsApp di bawah untuk konfirmasi pembayaran dan aktivasi akun.<br>
@@ -181,12 +164,18 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 </div>
 
 <script>
+// ── XSS sanitizer ─────────────────────────────────────────────────────────
+function escHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 const SB_URL = 'https://lztdvlrunspmcoewfjcg.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx6dGR2bHJ1bnNwbWNvZXdmamNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2ODA5MDIsImV4cCI6MjA5MDI1NjkwMn0.fOxpyctLY6k-QjaMIdUdRHJnsGm7FhPozhWTMBSl9-4';
 var ADMIN_WA = ''; // akan diambil dari Supabase
 const FITUR_LABEL = {kasir:'🛒 Kasir & Order',meja:'🪑 Manajemen Meja',shift:'🔓 Shift Kasir',menu:'🍽️ Menu & Harga',stok:'📦 Stok Bahan',laporan:'📊 Laporan',riwayat:'📋 Riwayat Transaksi',online_order:'🛵 Pesanan Online',member:'👥 Member & Poin',rekrutmen:'📝 Rekrutmen',multi_user:'👤 Multi User'};
 
-var _sb = null, _plans = [], _selPlan = null, _restoId = null, BUKTI_BASE64 = null;
+var _sb = null, _plans = [], _selPlan = null, _restoId = null;
 
 function g(id){ return document.getElementById(id); }
 
@@ -233,8 +222,6 @@ function goStep3() {
   if (!nama){ showErr('Nama toko wajib diisi'); return; }
   if (!owner){ showErr('Nama pemilik wajib diisi'); return; }
   if (!hp){ showErr('No. HP wajib diisi'); return; }
-  var pin = (g('r-pin')||{value:''}).value.trim();
-  if (!pin || !/^[0-9]{4}$/.test(pin)){ showErr('PIN admin 4 digit angka wajib diisi'); return; }
   g('step2').classList.remove('active'); g('step2').classList.add('done');
   g('step3').classList.add('active');
   // Build ringkasan
@@ -253,110 +240,9 @@ function goStep3() {
   }).join('');
   g('panel-3').style.display = 'block';
   g('panel-3').scrollIntoView({behavior:'smooth',block:'start'});
-  // Load info pembayaran dari Supabase
-  loadPaymentInfo();
-}
-
-
-// Load info pembayaran dari Supabase system_config (diset oleh admin)
-async function loadPaymentInfo() {
-  var box = g('payment-info-box'); if (!box) return;
-  try {
-    var res = await _sb.from('system_config')
-      .select('key,value')
-      .in('key', ['payment_banks','payment_qris_img','payment_qris_nama']);
-    var banks = [], qrisImg = null, qrisNama = '';
-    if (!res.error && res.data) {
-      res.data.forEach(function(r) {
-        if (r.key === 'payment_banks') {
-          try { banks = JSON.parse(r.value) || []; } catch(e){}
-        }
-        if (r.key === 'payment_qris_img') qrisImg = r.value;
-        if (r.key === 'payment_qris_nama') qrisNama = r.value;
-      });
-    }
-    var html = '';
-
-    // Bank transfers
-    banks.filter(function(b){ return b.nama || b.norek; }).forEach(function(b) {
-      html += '<div style="background:var(--bg);border:1.5px solid var(--brd);border-radius:10px;padding:12px 14px;margin-bottom:10px">' +
-        '<div style="font-size:11px;font-weight:700;color:var(--txt2);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em">🏦 Transfer Bank</div>' +
-        '<div style="font-size:16px;font-weight:800">' + (b.nama||'Bank') + ' · ' + (b.norek||'-') + '</div>' +
-        '<div style="font-size:12px;color:var(--txt2);margin-top:2px">a.n. ' + (b.an||'-') + '</div>' +
-        '<button data-norek="' + (b.norek||'').replace(/"/g,'') + '" onclick="var n=this.dataset.norek;if(navigator.clipboard){navigator.clipboard.writeText(n).then(function(){showToast(\'✅ Disalin: \'+n)});}else{showToast(n);}" ' +
-          'style="margin-top:6px;font-size:11px;padding:4px 10px;border:1px solid var(--brd);border-radius:6px;background:var(--bg2);cursor:pointer">📋 Salin No. Rekening</button>' +
-      '</div>';
-    });
-
-    // QRIS
-    if (qrisImg) {
-      html += '<div style="background:var(--bg);border:1.5px solid var(--brd);border-radius:10px;padding:14px;margin-bottom:10px;text-align:center">' +
-        '<div style="font-size:11px;font-weight:700;color:var(--txt2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">📲 Scan QRIS</div>' +
-        (qrisNama ? '<div style="font-size:13px;font-weight:700;margin-bottom:8px">' + qrisNama + '</div>' : '') +
-        '<img src="' + qrisImg + '" style="max-width:200px;border-radius:8px;border:1px solid var(--brd)">' +
-      '</div>';
-    }
-
-    if (!html) {
-      html = '<div style="font-size:12px;color:var(--txt3);padding:12px;text-align:center">Info pembayaran belum diatur admin.<br>Silakan hubungi admin via WhatsApp.</div>';
-    }
-    box.innerHTML = html;
-  } catch(e) {
-    box.innerHTML = '<div style="font-size:12px;color:var(--txt3);padding:12px;text-align:center">Gagal memuat info pembayaran.<br>Silakan hubungi admin via WhatsApp.</div>';
-  }
-}
-
-function showToast(msg) {
-  var t = document.createElement('div');
-  t.textContent = msg;
-  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;z-index:9999;opacity:1;transition:opacity .4s';
-  document.body.appendChild(t);
-  setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ t.remove(); }, 400); }, 2500);
-}
-
-function previewBukti(input) {
-  var file = input.files && input.files[0];
-  if (!file) return;
-  // Validasi ukuran file (max 3MB)
-  if (file.size > 3 * 1024 * 1024) {
-    var errEl = g('bukti-err');
-    if (errEl) { errEl.textContent = '⚠️ Ukuran file terlalu besar (maks 3MB)'; errEl.style.display = 'block'; }
-    input.value = '';
-    return;
-  }
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    BUKTI_BASE64 = e.target.result;
-    var wrap = g('bukti-preview-wrap');
-    var img = g('bukti-preview-img');
-    var lbl = g('bukti-label');
-    var err = g('bukti-err');
-    if (img) img.src = BUKTI_BASE64;
-    if (wrap) wrap.style.display = 'block';
-    if (lbl) lbl.style.display = 'none';
-    if (err) err.style.display = 'none';
-  };
-  reader.readAsDataURL(file);
-}
-
-function hapusBukti() {
-  BUKTI_BASE64 = null;
-  var fi = g('bukti-file'); if (fi) fi.value = '';
-  var wrap = g('bukti-preview-wrap'); if (wrap) wrap.style.display = 'none';
-  var lbl = g('bukti-label'); if (lbl) lbl.style.display = 'block';
 }
 
 async function daftar() {
-  // Validasi bukti pembayaran wajib
-  if (!BUKTI_BASE64) {
-    var errEl = g('bukti-err');
-    if (errEl) { errEl.textContent = '⚠️ Wajib upload bukti pembayaran sebelum mengirim'; errEl.style.display = 'block'; }
-    var lbl = g('bukti-label');
-    if (lbl) { lbl.style.borderColor = 'var(--red-dk)'; lbl.style.background = 'var(--red-bg)'; }
-    var wrap = g('bukti-preview-wrap') || lbl;
-    if (wrap) wrap.scrollIntoView({behavior:'smooth', block:'center'});
-    return;
-  }
   var btn = g('btn-daftar');
   btn.disabled=true; btn.textContent='⏳ Memproses...';
   try {
@@ -368,7 +254,6 @@ async function daftar() {
       owner_email: g('r-email').value.trim()||null,
       alamat: g('r-alamat').value.trim()||null,
       status: 'pending',
-      bukti_bayar: BUKTI_BASE64||null,  // simpan bukti pembayaran
     };
     var rr = await _sb.from('restaurants').insert(tokoData).select('id').single();
     if (rr.error) throw rr.error;
@@ -385,31 +270,11 @@ async function daftar() {
       fitur_override: _selPlan.fitur || {},
       catatan: 'Menunggu konfirmasi pembayaran'
     });
-    // Buat user admin pertama di tabel users
-    var pinVal = (g('r-pin')||{value:'0000'}).value.trim() || '0000';
-    var pinHash = pinVal;
-    try {
-      var enc = new TextEncoder().encode(pinVal);
-      var buf = await crypto.subtle.digest('SHA-256', enc);
-      pinHash = Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
-    } catch(hashErr) { console.warn('Hash PIN gagal:', hashErr.message); }
-    await _sb.from('users').insert({
-      restaurant_id: _restoId,
-      nama: g('r-owner').value.trim() || 'Admin',
-      role: 'admin',
-      pin_hash: pinHash,
-      perms: {order:1,meja:1,shift:1,menu:1,stok:1,laporan:1,riwayat:1,
-               'online-order':1,rekrutmen:1,users:1,settings:1,diskon:1,void_trx:1,edit_harga:1}
-    });
-
     // Show success
     g('panel-2').style.display='none';
     g('panel-3').style.display='none';
     g('panel-success').style.display='block';
     g('resto-id-box').textContent = _restoId;
-    // Tampilkan PIN di success screen
-    var pinBox = g('pin-info-box');
-    if (pinBox) pinBox.textContent = (g('r-pin')||{value:'****'}).value || '****';
     g('panel-success').scrollIntoView({behavior:'smooth'});
   } catch(e) {
     btn.disabled=false; btn.textContent='✅ Kirim Pendaftaran';
