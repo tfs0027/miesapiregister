@@ -135,14 +135,30 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
     </div>
     <div class="card">
       <div class="card-title">💳 Cara Pembayaran</div>
-      <div style="font-size:13px;color:var(--txt2);line-height:1.8;margin-bottom:14px">
-        Transfer ke rekening berikut, lalu kirim bukti ke WhatsApp admin:
-        <div style="margin-top:10px;background:var(--bg);border-radius:10px;padding:12px 14px;font-weight:700;font-size:14px">
-          🏦 BCA 1234567890<br>
-          a.n. WarungKu Indonesia
-        </div>
+      <div style="font-size:13px;color:var(--txt2);line-height:1.8;margin-bottom:12px">
+        Transfer ke rekening berikut atau scan QRIS, lalu kirim bukti ke WhatsApp admin:
       </div>
-      <button class="btn btn-primary" onclick="daftar()" id="btn-daftar">✅ Kirim Pendaftaran</button>
+      <div id="payment-info-box" style="margin-bottom:14px">
+        <div style="text-align:center;padding:16px;color:var(--txt3);font-size:12px">⏳ Memuat info pembayaran...</div>
+      </div>
+      <!-- Upload bukti pembayaran -->
+      <div style="margin-top:16px;padding:14px;background:var(--accent-bg,#FFF3EE);border-radius:12px;border:2px dashed var(--accent,#E17055)">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--accent,#E17055)">📸 Upload Bukti Pembayaran <span style="color:var(--red)">*</span></div>
+        <div style="font-size:11px;color:var(--txt2);margin-bottom:10px">
+          Foto/screenshot bukti transfer atau QRIS. Pendaftaran tidak bisa dikirim tanpa bukti pembayaran.
+        </div>
+        <input type="file" id="bukti-file" accept="image/*" style="display:none" onchange="previewBukti(this)">
+        <label for="bukti-file" id="bukti-label" style="display:block;padding:14px;text-align:center;border:1.5px dashed var(--brd);border-radius:10px;cursor:pointer;background:var(--bg2);font-size:12px;color:var(--txt2)">
+          📁 Klik untuk pilih foto bukti bayar
+        </label>
+        <div id="bukti-preview-wrap" style="margin-top:10px;display:none">
+          <img id="bukti-preview-img" style="max-width:100%;max-height:220px;border-radius:10px;border:1px solid var(--brd);display:block;margin:0 auto">
+          <button onclick="hapusBukti()" style="display:block;margin:8px auto 0;font-size:11px;padding:4px 12px;background:var(--red-bg,#FEE2E2);color:#B91C1C;border:1px solid #FCA5A5;border-radius:6px;cursor:pointer">🗑️ Ganti Foto</button>
+        </div>
+        <div id="bukti-err" style="display:none;color:var(--red-dk,#B91C1C);font-size:11px;margin-top:6px;font-weight:600">⚠️ Wajib upload bukti pembayaran</div>
+      </div>
+
+      <button class="btn btn-primary" onclick="daftar()" id="btn-daftar" style="margin-top:14px">✅ Kirim Pendaftaran</button>
     </div>
   </div>
 
@@ -175,9 +191,52 @@ const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 var ADMIN_WA = ''; // akan diambil dari Supabase
 const FITUR_LABEL = {kasir:'🛒 Kasir & Order',meja:'🪑 Manajemen Meja',shift:'🔓 Shift Kasir',menu:'🍽️ Menu & Harga',stok:'📦 Stok Bahan',laporan:'📊 Laporan',riwayat:'📋 Riwayat Transaksi',online_order:'🛵 Pesanan Online',member:'👥 Member & Poin',rekrutmen:'📝 Rekrutmen',multi_user:'👤 Multi User'};
 
-var _sb = null, _plans = [], _selPlan = null, _restoId = null;
+var _sb = null, _plans = [], _selPlan = null, _restoId = null, _buktiBayarBase64 = null;
 
 function g(id){ return document.getElementById(id); }
+
+function previewBukti(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { alert('Ukuran foto maks 5MB'); input.value = ''; return; }
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    // Kompres gambar sebelum simpan
+    var img = new Image();
+    img.onload = function() {
+      var MAX = 1200;
+      var w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      _buktiBayarBase64 = canvas.toDataURL('image/jpeg', 0.80);
+      // Tampilkan preview
+      var prev = g('bukti-preview-img');
+      var wrap = g('bukti-preview-wrap');
+      var lbl  = g('bukti-label');
+      var err  = g('bukti-err');
+      prev.src = _buktiBayarBase64;
+      wrap.style.display = 'block';
+      lbl.style.display  = 'none';
+      if (err) err.style.display = 'none';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function hapusBukti() {
+  _buktiBayarBase64 = null;
+  var fi = g('bukti-file'); if (fi) fi.value = '';
+  var wrap = g('bukti-preview-wrap');
+  var lbl  = g('bukti-label');
+  if (wrap) wrap.style.display = 'none';
+  if (lbl)  lbl.style.display  = 'block';
+}
 
 async function init() {
   _sb = window.supabase.createClient(SB_URL, SB_KEY);
@@ -186,6 +245,32 @@ async function init() {
     var scRes = await _sb.from('system_config').select('value').eq('key','admin_wa').single();
     if (scRes.data) ADMIN_WA = scRes.data.value || '';
   } catch(e) { console.warn('system_config not found, using default WA'); }
+
+  // Muat info pembayaran dari system_config
+  try {
+    var cfgKeys = ['rekening','qris_img','qris_nama','nama_bank'];
+    var cfgRes = await _sb.from('system_config').select('key,value').in('key', cfgKeys);
+    var cfgMap = {};
+    if (cfgRes.data) cfgRes.data.forEach(function(r){ cfgMap[r.key]=r.value; });
+    var pib = document.getElementById('payment-info-box');
+    if (pib) {
+      var html = '';
+      if (cfgMap.rekening) {
+        html += '<div style="background:var(--bg);border-radius:10px;padding:12px 14px;font-size:14px;font-weight:700;margin-bottom:10px">'
+          + (cfgMap.nama_bank ? cfgMap.nama_bank + '<br>' : '')
+          + '🏦 ' + escHtml(cfgMap.rekening)
+          + '</div>';
+      }
+      if (cfgMap.qris_img) {
+        html += '<div style="text-align:center;margin-bottom:8px">'
+          + '<img src="' + cfgMap.qris_img + '" style="max-width:200px;border-radius:10px;border:1px solid var(--brd)">'
+          + (cfgMap.qris_nama ? '<div style="font-size:11px;color:var(--txt2);margin-top:4px">' + escHtml(cfgMap.qris_nama) + '</div>' : '')
+          + '</div>';
+      }
+      if (!html) html = '<div style="color:var(--txt3);font-size:12px;padding:8px">Hubungi admin untuk info rekening</div>';
+      pib.innerHTML = html;
+    }
+  } catch(e2) {}
 
   var res = await _sb.from('plans').select('*').eq('aktif', true).order('urutan');
   _plans = res.data || [];
@@ -219,6 +304,13 @@ function showErr(msg){ var e=g('err-global'); e.textContent=msg; e.style.display
 function goStep3() {
   var nama=g('r-nama').value.trim(), owner=g('r-owner').value.trim(), hp=g('r-hp').value.trim();
   if (!_selPlan){ showErr('Pilih paket terlebih dahulu'); return; }
+  // Validasi bukti bayar — wajib jika paket berbayar
+  if (_selPlan && _selPlan.harga > 0 && !_buktiBayarBase64) {
+    var errEl = g('bukti-err');
+    if (errEl) { errEl.style.display = 'block'; errEl.scrollIntoView({behavior:'smooth',block:'center'}); }
+    showErr('Upload bukti pembayaran terlebih dahulu');
+    return;
+  }
   if (!nama){ showErr('Nama toko wajib diisi'); return; }
   if (!owner){ showErr('Nama pemilik wajib diisi'); return; }
   if (!hp){ showErr('No. HP wajib diisi'); return; }
@@ -254,6 +346,7 @@ async function daftar() {
       owner_email: g('r-email').value.trim()||null,
       alamat: g('r-alamat').value.trim()||null,
       status: 'pending',
+      bukti_bayar: _buktiBayarBase64 || null,
     };
     var rr = await _sb.from('restaurants').insert(tokoData).select('id').single();
     if (rr.error) throw rr.error;
