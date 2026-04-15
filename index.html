@@ -366,14 +366,16 @@ async function daftar() {
     var buf = await crypto.subtle.digest('SHA-256', enc);
     var pinHash = Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,'0');}).join('');
 
+    var ownerNama = g('r-owner').value.trim();
+    var ownerHp   = g('r-hp').value.trim();
     var tokoData = {
-      nama: g('r-nama').value.trim(),
-      logo: g('r-logo').value.trim()||'🍜',
-      nama_pemilik: g('r-owner').value.trim(),
-      hp: g('r-hp').value.trim(),
-      owner_email: g('r-email').value.trim()||null,
-      alamat: g('r-alamat').value.trim()||null,
-      status: 'pending',
+      nama:        g('r-nama').value.trim(),
+      logo:        g('r-logo').value.trim() || '🍜',
+      owner_nama:  ownerNama,
+      owner_hp:    ownerHp,
+      owner_email: g('r-email').value.trim() || null,
+      alamat:      g('r-alamat').value.trim() || null,
+      status:      'pending',
       bukti_bayar: _buktiBayarBase64 || null,
     };
     var rr = await _sb.from('restaurants').insert(tokoData).select('id').single();
@@ -383,7 +385,7 @@ async function daftar() {
     // Buat user Admin untuk toko ini
     var ur = await _sb.from('users').insert({
       restaurant_id: _restoId,
-      name: g('r-owner').value.trim() || 'Admin',
+      name: ownerNama || 'Admin',
       role: 'admin',
       pin: pin,
       pin_hash: pinHash,
