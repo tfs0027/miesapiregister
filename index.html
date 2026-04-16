@@ -243,6 +243,19 @@ const FITUR_LABEL = {kasir:'🛒 Kasir & Order',meja:'🪑 Manajemen Meja',shift
 var _sb = null, _plans = [], _selPlan = null, _restoId = null, _buktiBayarBase64 = null;
 var _paymentInfo = {}; // cache info pembayaran dari system_config
 
+async function muatUlangPembayaran() {
+  var pib = document.getElementById('payment-info-box');
+  if (pib) pib.innerHTML = '<div style="text-align:center;padding:10px;color:var(--txt3,#aaa);font-size:12px">⏳ Memuat...</div>';
+  try {
+    var cfgKeys = ['rekening','qris_img','qris_nama','nama_bank','atas_nama'];
+    var cfgRes = await _sb.from('system_config').select('key,value').in('key', cfgKeys);
+    if (cfgRes.data && cfgRes.data.length) {
+      cfgRes.data.forEach(function(r){ _paymentInfo[r.key] = r.value; });
+    }
+  } catch(e) { console.warn('reload payment:', e.message); }
+  renderPaymentInfo();
+}
+
 function renderPaymentInfo() {
   var pib = document.getElementById('payment-info-box');
   if (!pib) return;
@@ -263,7 +276,10 @@ function renderPaymentInfo() {
       + '</div>';
   }
   if (!html) {
-    html = '<div style="color:var(--txt3,#aaa);font-size:12px;padding:10px;text-align:center;border:1px dashed var(--brd,#ddd);border-radius:8px">Hubungi admin untuk info rekening</div>';
+    html = '<div style="color:var(--txt3,#aaa);font-size:12px;padding:10px;text-align:center">'
+      + 'Info rekening belum diisi oleh admin.'
+      + '<br><button onclick="muatUlangPembayaran()" style="margin-top:8px;font-size:11px;padding:4px 12px;border:1px solid var(--brd,#ddd);border-radius:6px;background:transparent;cursor:pointer;color:var(--txt2,#666)">⟳ Muat Ulang</button>'
+      + '</div>';
   }
   pib.innerHTML = html;
 }
@@ -350,14 +366,20 @@ async function init() {
     if (scRes.data) ADMIN_WA = scRes.data.value || '';
   } catch(e) { console.warn('system_config not found, using default WA'); }
 
-  // Muat info pembayaran — simpan ke variabel global agar bisa dipakai di goStep3
+  // Muat info pembayaran dari system_config
   try {
     var cfgKeys = ['rekening','qris_img','qris_nama','nama_bank','atas_nama'];
     var cfgRes = await _sb.from('system_config').select('key,value').in('key', cfgKeys);
-    if (cfgRes.data && cfgRes.data.length) {
+    if (cfgRes.error) {
+      console.warn('system_config error:', cfgRes.error.message);
+    } else if (cfgRes.data && cfgRes.data.length) {
       cfgRes.data.forEach(function(r){ _paymentInfo[r.key] = r.value; });
+    } else {
+      console.warn('system_config: data kosong, belum ada rekening/QRIS di admin');
     }
-  } catch(e2) {}
+  } catch(e2) {
+    console.warn('Gagal load payment info:', e2.message);
+  }
   renderPaymentInfo();
 
   var res = await _sb.from('plans').select('*').eq('aktif', true).order('urutan');
