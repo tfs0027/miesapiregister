@@ -241,6 +241,32 @@ var ADMIN_WA = ''; // akan diambil dari Supabase
 const FITUR_LABEL = {kasir:'🛒 Kasir & Order',meja:'🪑 Manajemen Meja',shift:'🔓 Shift Kasir',menu:'🍽️ Menu & Harga',stok:'📦 Stok Bahan',laporan:'📊 Laporan',riwayat:'📋 Riwayat Transaksi',online_order:'🛵 Pesanan Online',member:'👥 Member & Poin',rekrutmen:'📝 Rekrutmen',multi_user:'👤 Multi User'};
 
 var _sb = null, _plans = [], _selPlan = null, _restoId = null, _buktiBayarBase64 = null;
+var _paymentInfo = {}; // cache info pembayaran dari system_config
+
+function renderPaymentInfo() {
+  var pib = document.getElementById('payment-info-box');
+  if (!pib) return;
+  var p = _paymentInfo;
+  var html = '';
+  if (p.rekening) {
+    html += '<div style="background:var(--bg,#f9f9f9);border-radius:10px;padding:12px 16px;font-size:14px;margin-bottom:10px;line-height:1.7">'
+      + (p.nama_bank ? '<div style="font-size:11px;color:var(--txt3,#888);font-weight:600;margin-bottom:2px">' + escHtml(p.nama_bank) + '</div>' : '')
+      + '<div style="font-size:18px;font-weight:800;letter-spacing:1px">🏦 ' + escHtml(p.rekening) + '</div>'
+      + (p.atas_nama ? '<div style="font-size:12px;color:var(--txt2,#666);margin-top:2px">a.n. ' + escHtml(p.atas_nama) + '</div>' : '')
+      + '</div>';
+  }
+  if (p.qris_img) {
+    html += '<div style="text-align:center;margin-bottom:10px">'
+      + '<div style="font-size:11px;color:var(--txt3,#888);margin-bottom:6px;font-weight:600">QRIS</div>'
+      + '<img src="' + p.qris_img + '" style="max-width:200px;border-radius:10px;border:1px solid var(--brd,#eee)">'
+      + (p.qris_nama ? '<div style="font-size:11px;color:var(--txt2,#666);margin-top:4px">' + escHtml(p.qris_nama) + '</div>' : '')
+      + '</div>';
+  }
+  if (!html) {
+    html = '<div style="color:var(--txt3,#aaa);font-size:12px;padding:10px;text-align:center;border:1px dashed var(--brd,#ddd);border-radius:8px">Hubungi admin untuk info rekening</div>';
+  }
+  pib.innerHTML = html;
+}
 
 function g(id){ return document.getElementById(id); }
 
@@ -324,31 +350,15 @@ async function init() {
     if (scRes.data) ADMIN_WA = scRes.data.value || '';
   } catch(e) { console.warn('system_config not found, using default WA'); }
 
-  // Muat info pembayaran dari system_config
+  // Muat info pembayaran — simpan ke variabel global agar bisa dipakai di goStep3
   try {
-    var cfgKeys = ['rekening','qris_img','qris_nama','nama_bank'];
+    var cfgKeys = ['rekening','qris_img','qris_nama','nama_bank','atas_nama'];
     var cfgRes = await _sb.from('system_config').select('key,value').in('key', cfgKeys);
-    var cfgMap = {};
-    if (cfgRes.data) cfgRes.data.forEach(function(r){ cfgMap[r.key]=r.value; });
-    var pib = document.getElementById('payment-info-box');
-    if (pib) {
-      var html = '';
-      if (cfgMap.rekening) {
-        html += '<div style="background:var(--bg);border-radius:10px;padding:12px 14px;font-size:14px;font-weight:700;margin-bottom:10px">'
-          + (cfgMap.nama_bank ? cfgMap.nama_bank + '<br>' : '')
-          + '🏦 ' + escHtml(cfgMap.rekening)
-          + '</div>';
-      }
-      if (cfgMap.qris_img) {
-        html += '<div style="text-align:center;margin-bottom:8px">'
-          + '<img src="' + cfgMap.qris_img + '" style="max-width:200px;border-radius:10px;border:1px solid var(--brd)">'
-          + (cfgMap.qris_nama ? '<div style="font-size:11px;color:var(--txt2);margin-top:4px">' + escHtml(cfgMap.qris_nama) + '</div>' : '')
-          + '</div>';
-      }
-      if (!html) html = '<div style="color:var(--txt3);font-size:12px;padding:8px">Hubungi admin untuk info rekening</div>';
-      pib.innerHTML = html;
+    if (cfgRes.data && cfgRes.data.length) {
+      cfgRes.data.forEach(function(r){ _paymentInfo[r.key] = r.value; });
     }
   } catch(e2) {}
+  renderPaymentInfo();
 
   var res = await _sb.from('plans').select('*').eq('aktif', true).order('urutan');
   _plans = res.data || [];
@@ -410,6 +420,8 @@ function goStep3() {
   if (buktiSec) {
     buktiSec.style.display = _selPlan.harga > 0 ? 'block' : 'none';
   }
+  // Render info pembayaran (fresh setiap kali panel-3 dibuka)
+  renderPaymentInfo();
   g('panel-3').style.display = 'block';
   g('panel-3').scrollIntoView({behavior:'smooth',block:'start'});
 }
