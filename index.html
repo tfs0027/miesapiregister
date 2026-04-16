@@ -207,14 +207,23 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
     <div class="card success-view">
       <div class="success-icon">🎉</div>
       <div class="success-title">Pendaftaran Berhasil!</div>
-      <div style="font-size:13px;color:var(--txt2);margin-bottom:14px">ID Toko kamu (simpan ini):</div>
+
+      <div style="font-size:13px;color:var(--txt2);margin-bottom:6px">ID Toko kamu <span style="color:var(--red-dk);font-size:11px">(simpan ini!)</span></div>
       <div class="kode-box" id="resto-id-box">-</div>
+
+      <div style="font-size:13px;color:var(--txt2);margin:10px 0 6px">PIN Admin kamu <span style="color:var(--red-dk);font-size:11px">(simpan & jaga kerahasiaan!)</span></div>
+      <div class="kode-box" id="pin-info-box" style="letter-spacing:10px;font-size:26px">----</div>
+
+      <div style="background:#FFF3E0;border-radius:10px;padding:10px 14px;font-size:11px;color:#E65100;margin-bottom:14px;text-align:left">
+        ⚠️ <b>Screenshot halaman ini sekarang!</b> PIN tidak bisa dilihat lagi setelah halaman ditutup.
+      </div>
+
       <div class="note-box">
         ✅ Pendaftaran sudah kami terima.<br>
-        📱 Silakan hubungi admin via WhatsApp di bawah untuk konfirmasi pembayaran dan aktivasi akun.<br>
-        ⏱️ Akun akan aktif dalam 1×24 jam setelah pembayaran dikonfirmasi.
+        📱 Hubungi admin WhatsApp untuk konfirmasi pembayaran dan aktivasi akun.<br>
+        ⏱️ Akun aktif dalam 1×24 jam setelah pembayaran dikonfirmasi.
       </div>
-      <button class="btn btn-wa" onclick="hubungiAdmin()">💬 Hubungi Admin via WhatsApp</button>
+      <button class="btn btn-wa" onclick="hubungiAdmin()" style="margin-bottom:8px">💬 Hubungi Admin via WhatsApp</button>
     </div>
   </div>
 </div>
@@ -475,8 +484,9 @@ async function daftar() {
     // Tampilkan halaman sukses
     ['panel-1','panel-2','panel-3'].forEach(function(id){ var el=g(id); if(el) el.style.display='none'; });
     g('panel-success').style.display = 'block';
-    g('resto-id-box').textContent = _restoId;
-    g('pin-info-box').textContent = pin;
+    var rIdEl = g('resto-id-box'), pinEl = g('pin-info-box');
+    if (rIdEl) rIdEl.textContent = _restoId;
+    if (pinEl) pinEl.textContent = pin;
     g('panel-success').scrollIntoView({behavior:'smooth'});
   } catch(e) {
     btn.disabled=false; btn.textContent='✅ Kirim Pendaftaran';
