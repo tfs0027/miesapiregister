@@ -445,13 +445,13 @@ async function daftar() {
     _restoId = rr.data.id;
 
     // Buat user Admin untuk toko ini
+    var allPerms = {order:1,meja:1,shift:1,menu:1,stok:1,laporan:1,riwayat:1,users:1,settings:1,diskon:1,void_trx:1,edit_harga:1,'online-order':1,rekrutmen:1,settings_online:1,settings_rekrutmen:1};
     var ur = await _sb.from('users').insert({
       restaurant_id: _restoId,
-      name: ownerNama || 'Admin',
-      role: 'admin',
-      pin: pin,
-      pin_hash: pinHash,
-      perms: {kasir:1,meja:1,shift:1,menu:1,stok:1,laporan:1,riwayat:1,users:1,settings:1,diskon:1,void_trx:1,edit_harga:1,'online-order':1,rekrutmen:1,settings_online:1,settings_rekrutmen:1}
+      nama:          ownerNama || 'Admin',
+      role:          'admin',
+      pin_hash:      pinHash,
+      perms:         allPerms
     });
     if (ur.error) {
       // Rollback: hapus restaurant jika user gagal dibuat
