@@ -499,13 +499,13 @@ function hubungiAdmin() {
   var paket = _selPlan ? _selPlan.nama : '-';
   var harga = _selPlan ? (_selPlan.harga===0?'Gratis':'Rp '+_selPlan.harga.toLocaleString('id-ID')+'/'+_selPlan.periode) : '-';
   var nl = String.fromCharCode(10);
-  var msg = '🍜 Halo Admin WarungKu!' + nl +
-    'Saya ingin mendaftarkan toko:' + nl +
-    '*Nama Toko:* '+nama+nl+
-    '*Paket:* '+paket+nl+
-    '*Harga:* '+harga+nl+
-    '*ID Toko:* '+(_restoId||'-')+nl+nl+
-    'Mohon dikonfirmasi pendaftaran dan info pembayarannya. Terima kasih!';
+  var pinDisplay = _regPin || (g('pin-info-box') ? g('pin-info-box').textContent : '-');
+  var msg = '🍜 *Pendaftaran WarungKu POS*' + nl + nl +
+    '🏪 *Nama Toko:* '+nama+nl+
+    '📦 *Paket:* '+paket+' ('+harga+')'+nl+
+    '🔑 *ID Toko:* '+(_restoId||'-')+nl+
+    '🔐 *PIN Admin:* '+pinDisplay+nl + nl+
+    'Mohon konfirmasi pendaftaran dan aktivasi akun. Terima kasih! 🙏';
   if (!ADMIN_WA) {
     alert('Nomor WhatsApp admin belum dikonfigurasi. Silakan cek email konfirmasi.');
     return;
